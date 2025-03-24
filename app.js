@@ -2,50 +2,58 @@ import { Server } from "socket.io";
 
 const io = new Server({
   cors: {
-    origin: "https://yours-ten.vercel.app",
+    origin: "https://yours-ten.vercel.app",  // Update with your frontend URL
+    methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
-let onlineUser = [];
+let onlineUsers = [];
 
 const addUser = (userId, socketId) => {
-  console.log(`Adding user: ${userId} with socket ID: ${socketId}`);
-  const userExits = onlineUser.find((user) => user.userId === userId);
-  if (!userExits) {
-    onlineUser.push({ userId, socketId });
-    console.log("Current online users:", onlineUser);
+  if (!onlineUsers.some((user) => user.userId === userId)) {
+    onlineUsers.push({ userId, socketId });
+    console.log(`User added: ${userId} - Socket ID: ${socketId}`);
   }
 };
 
 const removeUser = (socketId) => {
-  onlineUser = onlineUser.filter((user) => user.socketId !== socketId);
+  onlineUsers = onlineUsers.filter((user) => user.socketId !== socketId);
+  console.log(`User disconnected: Socket ID ${socketId}`);
 };
 
-const getUser = (userId) => {
-  console.log(`Fetching user with ID: ${userId}`);
-  return onlineUser.find((user) => user.userId === userId);
-};
+const getUser = (userId) => onlineUsers.find((user) => user.userId === userId);
 
 io.on("connection", (socket) => {
+  console.log("A user connected!");
+
+  // Add new user
   socket.on("newUser", (userId) => {
     addUser(userId, socket.id);
+    console.log("Current online users:", onlineUsers);
   });
 
+  // Send message
   socket.on("sendMessage", ({ receiverId, data }) => {
     const receiver = getUser(receiverId);
-  
-    if (!receiver) {
-      console.log(`User with ID ${receiverId} is not online.`);
-      return;  // Don't try to emit to a non-existent user
-    }
-  
-    io.to(receiver.socketId).emit("getMessage", data);
-  });
-  
 
+    if (receiver) {
+      io.to(receiver.socketId).emit("getMessage", data);
+      console.log(`Message sent to ${receiverId}:`, data);
+    } else {
+      console.log(`User with ID ${receiverId} is not online.`);
+    }
+  });
+
+  // Handle disconnect
   socket.on("disconnect", () => {
     removeUser(socket.id);
+    console.log("User disconnected!");
   });
 });
 
-io.listen("4000");
+// Listen on dynamic or default port
+const PORT = process.env.PORT || 4000;
+io.listen(PORT, () => {
+  console.log(`Socket server listening on port ${PORT}`);
+});
