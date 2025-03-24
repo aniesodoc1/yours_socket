@@ -1,8 +1,12 @@
+import express from "express";
 import { Server } from "socket.io";
+import http from "http";
 
-const io = new Server({
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, {
   cors: {
-    origin: "https://yours-ten.vercel.app",  // Update with your frontend URL
+    origin: "https://yours-ten.vercel.app",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -19,7 +23,6 @@ const addUser = (userId, socketId) => {
 
 const removeUser = (socketId) => {
   onlineUsers = onlineUsers.filter((user) => user.socketId !== socketId);
-  console.log(`User disconnected: Socket ID ${socketId}`);
 };
 
 const getUser = (userId) => onlineUsers.find((user) => user.userId === userId);
@@ -27,33 +30,28 @@ const getUser = (userId) => onlineUsers.find((user) => user.userId === userId);
 io.on("connection", (socket) => {
   console.log("A user connected!");
 
-  // Add new user
   socket.on("newUser", (userId) => {
     addUser(userId, socket.id);
-    console.log("Current online users:", onlineUsers);
   });
 
-  // Send message
   socket.on("sendMessage", ({ receiverId, data }) => {
     const receiver = getUser(receiverId);
-
     if (receiver) {
       io.to(receiver.socketId).emit("getMessage", data);
-      console.log(`Message sent to ${receiverId}:`, data);
-    } else {
-      console.log(`User with ID ${receiverId} is not online.`);
     }
   });
 
-  // Handle disconnect
   socket.on("disconnect", () => {
     removeUser(socket.id);
-    console.log("User disconnected!");
   });
 });
 
-// Listen on dynamic or default port
+// Health check endpoint for Vercel
+app.get("/", (req, res) => {
+  res.send("Server is up and running!");
+});
+
 const PORT = process.env.PORT || 4000;
-io.listen(PORT, () => {
-  console.log(`Socket server listening on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Socket server running on port ${PORT}`);
 });
