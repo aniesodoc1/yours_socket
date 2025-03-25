@@ -4,13 +4,14 @@ import http from "http";
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
+const io = new Server({
   cors: {
-    origin: ["yours-ten.vercel.app", "yours-server.vercel.app"],
+    origin: "*", // Allow all origins temporarily
     methods: ["GET", "POST"],
-    credentials: true,
-  },
+    credentials: true
+  }
 });
+
 
 let onlineUsers = [];
 
